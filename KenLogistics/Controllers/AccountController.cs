@@ -57,7 +57,8 @@ namespace KenLogistics.Web.Controllers
                     LastName = model.LastName,
                     UserName = model.Email,
                     Email = model.Email,
-                    PhoneNumber = model.PhoneNumber
+                    PhoneNumber = model.PhoneNumber,
+                    LockoutEnabled = true
                 };
 
                 IdentityResult result = await _userManager.CreateAsync(user, model.Password);
@@ -71,7 +72,9 @@ namespace KenLogistics.Web.Controllers
                     await SendConfirmationEmailAsync(user.Email, cTokenLink);
 
                     //ViewBag.ConfirmEmail = "Registration successful, kindly check your email to confirm your registration"; /*: "";*/
-                    return RedirectToAction("Activate", new { email = user.Email });
+                    //return RedirectToAction("Activate", new { email = user.Email });
+                    TempData["Message"] = "Registration successful, kindly check your email to confirm your registration";
+                    return RedirectToAction("Register");
                 }
                 else
                 {
@@ -93,7 +96,7 @@ namespace KenLogistics.Web.Controllers
             ApplicationUser registeredUser = await _userManager.FindByEmailAsync(userEmail);
             if (registeredUser != null)
             {
-                IdentityResult result = await _userManager.AddToRoleAsync(registeredUser, "Users");
+                IdentityResult result = await _userManager.AddToRoleAsync(registeredUser, "User");
 
                 if (!result.Succeeded)
                 {
@@ -148,7 +151,12 @@ namespace KenLogistics.Web.Controllers
                 return View("Error", new ErrorViewModel());
             }
             var result = await _userManager.ConfirmEmailAsync(user, token);
-            return View(result.Succeeded ? "EmailConfirmed" : "Error");
+            if (result.Succeeded)
+            {
+                TempData["Message"] = "This account has been activated. Kindly log in below";
+                return RedirectToAction("Login");
+            }
+            return View("Error", new ErrorViewModel());
         }
 
         private void AddErrorsFromResult(IdentityResult result)
@@ -190,18 +198,25 @@ namespace KenLogistics.Web.Controllers
                 ApplicationUser user = await _userManager.FindByEmailAsync(details.Email);
                 if (!user.EmailConfirmed && user.IsDeactivated == false)
                 {
-                    return RedirectToAction("Activate", new { email = user.Email });
+                    ViewBag.NotVerified = "You have not yet verified your account. Please check your mailbox for instructions on verifying your registration in order to log in";
+                    return View(details);
                 }
                 if (user != null && user.IsDeactivated == false)
                 {
                     await _signInManager.SignOutAsync();
                     Microsoft.AspNetCore.Identity.SignInResult result =
                         await _signInManager.PasswordSignInAsync(
-                    user, details.Password, details.RememberMe, false);
+                    user, details.Password, details.RememberMe, true);
                     var xc = HttpContext.User;
                     if (result.Succeeded)
                     {
                         return LocalRedirect(returnUrl ?? "/");
+                    }
+                    // If account is lockedout send the use to AccountLocked view
+                    if (result.IsLockedOut)
+                    {
+                        TempData["Message"] = "Your account is locked, please try again after sometime or you may reset your password by clicking \"Forgot Your Password\" below";
+                        return RedirectToAction("Login");
                     }
                 }
                 ModelState.AddModelError(nameof(LoginViewModel.Email), "Invalid user or password");
@@ -406,13 +421,20 @@ namespace KenLogistics.Web.Controllers
                 if (user == null)
                 {
                     // Don't reveal that the user does not exist
-                    return RedirectToAction("ResetPasswordConfirmation");
+                    return View("ResetPasswordConfirmation");
                 }
 
                 var result = await _userManager.ResetPasswordAsync(user, resetPassword.ResetPasswordToken, resetPassword.Password);
                 if (result.Succeeded)
                 {
-                    return RedirectToAction("ResetPasswordConfirmation");
+                    // Upon successful password reset and if the account is lockedout, set
+                    // the account lockout end date to current UTC date time, so the user
+                    // can login with the new password
+                    if (await _userManager.IsLockedOutAsync(user))
+                    {
+                        await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow);
+                    }
+                    return View("ResetPasswordConfirmation");
                 }
 
                 foreach (var error in result.Errors)

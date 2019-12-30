@@ -11,5 +11,7 @@ namespace KenLogistics.Data
     {
         public KenLogisticsDbContext(DbContextOptions<KenLogisticsDbContext> options)
        : base(options) { }
+
+       
     }
 }
