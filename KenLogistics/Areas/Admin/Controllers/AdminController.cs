@@ -5,9 +5,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using ExpenseTracker.Data.Domain.Models;
-using ExpenseTracker.Web.Models;
+using KenLogistics.Data.Entities;
+using KenLogistics.Web.Models;
 using Microsoft.EntityFrameworkCore;
+using KenLogistics.Web.Areas.Admin.Models;
 
 // For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -18,17 +19,17 @@ namespace ExpenseTracker.Web.Areas.Admin.Controllers
     public class AdminController : Controller
     {
         #region Private fields
-        private readonly UserManager<AppUser> _userManager;
-        private readonly IUserValidator<AppUser> _userValidator;
-        private readonly IPasswordValidator<AppUser> _passwordValidator;
-        private readonly IPasswordHasher<AppUser> _passwordHasher;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IUserValidator<ApplicationUser> _userValidator;
+        private readonly IPasswordValidator<ApplicationUser> _passwordValidator;
+        private readonly IPasswordHasher<ApplicationUser> _passwordHasher;
 
         #endregion
 
-        public AdminController(UserManager<AppUser> userManager,
-                            IUserValidator<AppUser> userValidator,
-                            IPasswordValidator<AppUser> passwordValidator,
-                            IPasswordHasher<AppUser> passwordHasher)
+        public AdminController(UserManager<ApplicationUser> userManager,
+                            IUserValidator<ApplicationUser> userValidator,
+                            IPasswordValidator<ApplicationUser> passwordValidator,
+                            IPasswordHasher<ApplicationUser> passwordHasher)
         {
             _userManager = userManager;
             _userValidator = userValidator;
@@ -40,23 +41,23 @@ namespace ExpenseTracker.Web.Areas.Admin.Controllers
         public IActionResult Index()
         {
             var allUsers =  _userManager.Users.ToList();
-            var activeUsers = allUsers.RemoveAll(x => x.IsActive == false);
-            return View(allUsers);
+            var activeUsers = allUsers.Where(x => x.IsDeactivated == false).ToList();
+            return View(activeUsers);
         }
 
         public IActionResult Deactivated()
         {
             var allUsers = _userManager.Users.ToList();
-            var noOfDeactivatedUsers = allUsers.RemoveAll(x => x.IsActive == true);
+            var deactivatedUsers = allUsers.Where(x => x.IsDeactivated == true).ToList();
             return View(allUsers);
         }
 
         public async Task<IActionResult> Restore(string id)
         {
-            AppUser user = await _userManager.FindByIdAsync(id);
+            ApplicationUser user = await _userManager.FindByIdAsync(id);
             if (user != null)
             {
-                user.IsActive = true;
+                user.IsDeactivated = false;
                 IdentityResult result = await _userManager.UpdateAsync(user);
                 if (result.Succeeded)
                 {
@@ -72,7 +73,7 @@ namespace ExpenseTracker.Web.Areas.Admin.Controllers
                 ModelState.AddModelError("", "User Not Found");
             }
             var allUsers = _userManager.Users.ToList();
-            var activeUsers = allUsers.RemoveAll(x => x.IsActive == true);
+            var activeUsers = allUsers.RemoveAll(x => x.IsDeactivated == false);
             return View("Deactivated", allUsers);
         }
         public IActionResult Create() => View();
@@ -83,7 +84,7 @@ namespace ExpenseTracker.Web.Areas.Admin.Controllers
         {
             if (ModelState.IsValid)
             {
-                AppUser user = new AppUser
+                ApplicationUser user = new ApplicationUser
                 {
                     UserName = model.Name,
                     Email = model.Email
@@ -110,7 +111,7 @@ namespace ExpenseTracker.Web.Areas.Admin.Controllers
         [HttpGet]
         public async Task<IActionResult> Edit(string id)
         {
-            AppUser user = await _userManager.FindByIdAsync(id);
+            ApplicationUser user = await _userManager.FindByIdAsync(id);
             if (user != null)
             {
                 return View(user);
@@ -125,7 +126,7 @@ namespace ExpenseTracker.Web.Areas.Admin.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(string id, string email, string password)
         {
-            AppUser user = await _userManager.FindByIdAsync(id);
+            ApplicationUser user = await _userManager.FindByIdAsync(id);
             if (user != null)
             {
                 user.Email = email;
@@ -175,14 +176,14 @@ namespace ExpenseTracker.Web.Areas.Admin.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(string id)
         {
-            AppUser user = await _userManager.FindByIdAsync(id);
+            ApplicationUser user = await _userManager.FindByIdAsync(id);
             if (user != null)
             {
-                user.IsActive = false;
+                user.IsDeactivated = true;
                 IdentityResult result = await _userManager.UpdateAsync(user);
                 if (result.Succeeded)
                 {
-                    TempData["Message"] = $"User \"{user.UserName}\" was deleted successfully!";
+                    TempData["Message"] = $"User \"{user.UserName}\" was deactivated successfully!";
                     return RedirectToAction("Index");
                 }
                 else
@@ -195,7 +196,7 @@ namespace ExpenseTracker.Web.Areas.Admin.Controllers
                 ModelState.AddModelError("", "User Not Found");
             }
             var allUsers = _userManager.Users.ToList();
-            var activeUsers = allUsers.RemoveAll(x => x.IsActive == false);
+            var activeUsers = allUsers.RemoveAll(x => x.IsDeactivated == true);
             return View("Index", allUsers);
         }
         private void AddErrorsFromResult(IdentityResult result)

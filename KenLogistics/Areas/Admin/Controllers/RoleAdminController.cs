@@ -6,8 +6,9 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using ExpenseTracker.Data.Domain.Models;
-using ExpenseTracker.Web.Models;
+using KenLogistics.Data.Entities;
+using KenLogistics.Web.Models;
+using KenLogistics.Web.Areas.Admin.Models;
 
 // For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -17,10 +18,10 @@ namespace ExpenseTracker.Web.Areas.Admin.Controllers
     [Area("Admin")]
     public class RoleAdminController : Controller
     {
-        private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly UserManager<AppUser> _userManager;
+        private readonly RoleManager<UserRole> _roleManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public RoleAdminController(RoleManager<IdentityRole> roleManager, UserManager<AppUser> userManager)
+        public RoleAdminController(RoleManager<UserRole> roleManager, UserManager<ApplicationUser> userManager)
         {
             _roleManager = roleManager;
             _userManager = userManager;
@@ -40,7 +41,7 @@ namespace ExpenseTracker.Web.Areas.Admin.Controllers
         {
             if (ModelState.IsValid)
             {
-                IdentityResult result = await _roleManager.CreateAsync(new IdentityRole(name));
+                IdentityResult result = await _roleManager.CreateAsync(new UserRole { Name = name });
                 if (result.Succeeded)
                 {
 
@@ -57,11 +58,11 @@ namespace ExpenseTracker.Web.Areas.Admin.Controllers
 
         public async Task<IActionResult> Edit(string id)
         {
-            IdentityRole role = await _roleManager.FindByIdAsync(id);
-            List<AppUser> members = new List<AppUser>();
+            UserRole role = await _roleManager.FindByIdAsync(id) as UserRole;
+            List<ApplicationUser> members = new List<ApplicationUser>();
 
-            List<AppUser> nonMembers = new List<AppUser>();
-            foreach (AppUser user in _userManager.Users)
+            List<ApplicationUser> nonMembers = new List<ApplicationUser>();
+            foreach (ApplicationUser user in _userManager.Users)
             {
                 var list = await _userManager.IsInRoleAsync(user, role.Name) ? members : nonMembers;
                 list.Add(user);
@@ -83,7 +84,7 @@ namespace ExpenseTracker.Web.Areas.Admin.Controllers
             {
                 foreach (string userId in model.IdsToAdd ?? new string[] { })
                 {
-                    AppUser user = await _userManager.FindByIdAsync(userId);
+                    ApplicationUser user = await _userManager.FindByIdAsync(userId);
                     if (user != null)
                     {
                         result = await _userManager.AddToRoleAsync(user, model.RoleName);
@@ -96,7 +97,7 @@ namespace ExpenseTracker.Web.Areas.Admin.Controllers
                 }
                 foreach (string userId in model.IdsToDelete ?? new string[] { })
                 {
-                    AppUser user = await _userManager.FindByIdAsync(userId);
+                    ApplicationUser user = await _userManager.FindByIdAsync(userId);
                     if (user != null)
                     {
                         result = await _userManager.RemoveFromRoleAsync(user,model.RoleName);
@@ -122,7 +123,7 @@ namespace ExpenseTracker.Web.Areas.Admin.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(string id)
         {
-            IdentityRole role = await _roleManager.FindByIdAsync(id);
+            UserRole role = await _roleManager.FindByIdAsync(id);
             if (role != null)
             {
                 IdentityResult result = await _roleManager.DeleteAsync(role);

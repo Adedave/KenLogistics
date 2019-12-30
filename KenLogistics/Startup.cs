@@ -51,6 +51,8 @@ namespace KenLogistics.Web
                 opts.Password.RequireLowercase = false;
                 opts.Password.RequireUppercase = false;
                 opts.Password.RequireDigit = true;
+                opts.Lockout.MaxFailedAccessAttempts = 5;
+                opts.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
             }).AddEntityFrameworkStores<KenLogisticsDbContext>()
                  .AddDefaultTokenProviders();
             //services.AddAuthentication()
@@ -104,13 +106,14 @@ namespace KenLogistics.Web
             }
 
             app.UseHttpsRedirection();
+            app.UseStatusCodePages();
             app.UseStaticFiles();
             app.UseCookiePolicy();
             app.UseHangfireDashboard();
             app.UseAuthentication();
             app.UseMvc(routes =>
             {
-		routes.MapRoute(
+		        routes.MapRoute(
                     name: "MyArea",
                     template: "{area:exists}/{controller=Home}/{action=Index}/{id?}");
 
@@ -118,6 +121,8 @@ namespace KenLogistics.Web
                     name: "default",
                     template: "{controller=Home}/{action=Index}/{id?}");
             });
+
+            CreateAdmin.CreateAdminAccount(app.ApplicationServices, Configuration).Wait();
         }
     }
 }

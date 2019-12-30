@@ -1,5 +1,5 @@
-﻿@model IEnumerable<AppUser>
-@inject UserManager<AppUser> UserManager
+﻿@model IEnumerable<ApplicationUser>
+@inject UserManager<ApplicationUser> UserManager
 @{
     ViewData["Title"] = "Deactivated Users";
 }
@@ -16,15 +16,15 @@
     }
     else
     {
-        foreach (AppUser user in Model)
+        foreach (ApplicationUser user in Model)
         {
             <tr>
                 <td>@user.Id</td>
                 <td>@user.UserName</td>
                 <td>@user.Email</td>
                 <td>
-                    @{ var appUser = await UserManager.FindByIdAsync(user.Id);
-                        var role = await UserManager.GetRolesAsync(appUser);}
+                    @{ var ApplicationUser = await UserManager.FindByIdAsync(user.Id);
+                        var role = await UserManager.GetRolesAsync(ApplicationUser);}
                     @{foreach (var item in role.ToList())
                         {
                             @item
