@@ -212,7 +212,7 @@ namespace KenLogistics.Web.Controllers
                     {
                         return LocalRedirect(returnUrl ?? "/");
                     }
-                    // If account is lockedout send the use to AccountLocked view
+                    // If account is lockedout inform the user
                     if (result.IsLockedOut)
                     {
                         TempData["Message"] = "Your account is locked, please try again after sometime or you may reset your password by clicking \"Forgot Your Password\" below";
@@ -254,83 +254,92 @@ namespace KenLogistics.Web.Controllers
                 return View("Login", loginViewModel);
             }
             var result = await _signInManager.ExternalLoginSignInAsync(
-            info.LoginProvider, info.ProviderKey, false);
+            info.LoginProvider, info.ProviderKey, true);
             if (result.Succeeded)
             {
+                //log success
                 return LocalRedirect(returnUrl);
             }
             else
             {
-                var success = await ExternallRegister(info);
+                
+                var success = await ExternalLoginClaims(info);
                 if (success)
                 {
                     return LocalRedirect(returnUrl);
                 }
-                ModelState.AddModelError("", $"Email claim not received from {info.LoginProvider}");
-                ModelState.AddModelError("", $"Please contact support on support@expensetracker.com");
-                return View("Login", loginViewModel);
+                var externalRegisterViewModel = ExternalRegisterClaims(info,returnUrl);
+                ViewBag.LoginProvider = info.LoginProvider;
+                return View("ExternalRegister", externalRegisterViewModel);
             }
         }
 
-        [AllowAnonymous]
-        public async Task<IActionResult> ExternalRegister()
+        private async Task<bool> ExternalLoginClaims(ExternalLoginInfo info)
         {
-            ExternalLoginInfo info = await _signInManager.GetExternalLoginInfoAsync();
             var email = info.Principal.FindFirst(ClaimTypes.Email).Value;
-            var firstName = info.Principal.FindFirst(ClaimTypes.GivenName).Value;
-            var lastName = info.Principal.FindFirst(ClaimTypes.Surname).Value;
-
-            RegisterViewModel registerViewModel = new RegisterViewModel
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user != null)
             {
-                FirstName = firstName,
-                LastName = lastName,
-                Email = email
-            };
-            ModelState.AddModelError("", $"Email claim not received from {info.LoginProvider}");
-            ModelState.AddModelError("", $"Please contact support on support@expensetracker.com");
-            return View("Register", registerViewModel);
+                IdentityResult identResult = await _userManager.AddLoginAsync(user, info);
+                if (identResult.Succeeded)
+                {
+                    await _signInManager.SignInAsync(user, false);
+                    return true;
+                }
+            }
+            return false;
         }
 
-        private async Task<bool> ExternallRegister(ExternalLoginInfo info)
+        [AllowAnonymous]
+        [HttpPost]
+        public async Task<IActionResult> ExternalRegister(ExternalRegisterViewModel registerViewModel)
+        {
+            if (ModelState.IsValid)
+            {
+                ExternalLoginInfo info = await _signInManager.GetExternalLoginInfoAsync();
+
+                var user = new ApplicationUser
+                {
+                    Email = registerViewModel.Email,
+                    UserName = registerViewModel.Email,
+                    FirstName = registerViewModel.FirstName,
+                    LastName = registerViewModel.LastName,
+                    PhoneNumber = registerViewModel.PhoneNumber
+                };
+                IdentityResult identityResult = await _userManager.CreateAsync(user);
+                if (identityResult.Succeeded)
+                {
+                    await AddUserToUsersRoleAsync(user.Email);
+                    identityResult = await _userManager.AddLoginAsync(user, info);
+                    if (identityResult.Succeeded)
+                    {
+                        await _signInManager.SignInAsync(user, true);
+                        
+                        //log success
+                        return LocalRedirect(registerViewModel.ReturnUrl ?? "/");
+                    }
+                }
+            }
+            return View(registerViewModel);
+        }
+
+        private ExternalRegisterViewModel ExternalRegisterClaims(ExternalLoginInfo info, string returnUrl)
         {
             var email = info.Principal.FindFirst(ClaimTypes.Email).Value;
             var firstName = info.Principal.FindFirst(ClaimTypes.GivenName).Value;
             var lastName = info.Principal.FindFirst(ClaimTypes.Surname).Value;
             if (email != null)
             {
-                var user = await _userManager.FindByEmailAsync(email);
-                if (user != null)
+                var externalRegister = new ExternalRegisterViewModel
                 {
-                    IdentityResult identResult = await _userManager.AddLoginAsync(user, info);
-                    if (identResult.Succeeded)
-                    {
-                        await _signInManager.SignInAsync(user, false);
-                        return true;
-                    }
-                }
-                else
-                {
-                    user = new ApplicationUser
-                    {
-                        Email = email,
-                        UserName = email,
-                        FirstName = firstName,
-                        LastName = lastName
-                    };
-                    IdentityResult identityResult = await _userManager.CreateAsync(user);
-                    if (identityResult.Succeeded)
-                    {
-                        await AddUserToUsersRoleAsync(user.Email);
-                        identityResult = await _userManager.AddLoginAsync(user, info);
-                        if (identityResult.Succeeded)
-                        {
-                            await _signInManager.SignInAsync(user, false);
-                            return true;
-                        }
-                    }
-                }
+                    Email = email,
+                    FirstName = firstName,
+                    LastName = lastName,
+                    ReturnUrl = returnUrl
+                };
+                return externalRegister;
             }
-            return false;
+            return new ExternalRegisterViewModel();
         }
 
         [AllowAnonymous]

@@ -55,18 +55,17 @@ namespace KenLogistics.Web
                 opts.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
             }).AddEntityFrameworkStores<KenLogisticsDbContext>()
                  .AddDefaultTokenProviders();
-            //services.AddAuthentication()
-            //    .AddGoogle(googleOptions =>
-            //    {
-            //        googleOptions.ClientId = Configuration["OAUTH:providers:0:clientId"];
-            //        googleOptions.ClientSecret = Configuration["OAUTH:providers:0:clientSecret"];
-            //        //googleOptions.CallbackPath = "/Account/ExternalLoginCallback";
-            //    })
-            //    .AddFacebook(facebookOptions =>
-            //    {
-            //        facebookOptions.AppId = Configuration["OAUTH:providers:1:clientId"];
-            //        facebookOptions.AppSecret = Configuration["OAUTH:providers:1:clientSecret"];
-            //    });
+            services.AddAuthentication()
+                .AddGoogle(googleOptions =>
+                {
+                    googleOptions.ClientId = Configuration["OAUTH:providers:0:clientId"];
+                    googleOptions.ClientSecret = Configuration["OAUTH:providers:0:clientSecret"];
+                })
+                .AddFacebook(facebookOptions =>
+                {
+                    facebookOptions.AppId = Configuration["OAUTH:providers:1:clientId"];
+                    facebookOptions.AppSecret = Configuration["OAUTH:providers:1:clientSecret"];
+                });
 
 
             services.AddMvc(options =>
@@ -78,11 +77,13 @@ namespace KenLogistics.Web
             })
             .SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
 
+var s = Configuration["ConnectionStrings:DefaultConnection"];
 
             services.AddDbContext<KenLogisticsDbContext>(options =>
               options.UseSqlServer(
                   Configuration.GetConnectionString("DefaultConnection")));
-
+            // Automatically perform database migration
+            services.BuildServiceProvider().GetService<KenLogisticsDbContext>().Database.Migrate();
             services.AddHangfire(
                         opt => opt.UseSqlServerStorage(Configuration.GetConnectionString("DefaultConnection"))
                     );

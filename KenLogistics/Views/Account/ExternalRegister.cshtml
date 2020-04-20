@@ -1,6 +1,6 @@
-﻿@model RegisterViewModel
+﻿@model ExternalRegisterViewModel
 @{
-    ViewData["Title"] = "Register New Account";
+    ViewData["Title"] = "Complete Your Local Account Information";
 }
 <style>
     /*.wrapper {
@@ -43,15 +43,17 @@
     }
 </style>
 
-       
-    <div class="wrapper">
+
+<div class="wrapper">
     <div class="inner">
-        <form asp-action="Register" method="post">
-            <h3 class="section-title-small text-center mb-50">Register</h3>
-            @if (TempData["Message"] != null)
+        <form asp-action="External Register" method="post">
+            <h3 class="section-title-small text-center mb-50">Complete Your Profile Information</h3>
+            @if (Model == null)
             {
                 <div class="alert alert-success alert-dismissible show" role="alert">
-                    @TempData["Message"]
+
+                    Email claim not received from @ViewBag.LoginProvider;<br />
+                    Please contact support on support@kenlogistics.com;
                     <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -82,57 +84,23 @@
                 <span class="text-danger" asp-validation-for="PhoneNumber"></span>
             </div>
 
-            @*<div class="form-group">
-            <label for="exampleInputEmail1">Email address</label>
-            <input type="email" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" placeholder="Enter email">
-            <small id="emailHelp" class="form-text text-muted">We'll never share your email with anyone else.</small>
-        </div>*@
-
-            <div class="form-group">
-                <label asp-for="Password"></label>
-                <input asp-for="Password" class="form-control" aria-describedby="passwordHelp" placeholder="Password" />
-                <span id="passwordHelp" class="form-text text-muted">Password must be at least 6 characters</span>
-                <br /><span class="text-danger" asp-validation-for="Password"></span>
-            </div>
-
-            <div class="form-group">
-                <label>Confirm Password</label>
-                <input asp-for="ConfirmPassword" class="form-control" placeholder="Confirm Password" />
-                <span class="text-danger" asp-validation-for="ConfirmPassword"></span>
-            </div>
-
             <div class="form-group form-check">
                 <input style="margin:5px;" type="checkbox" class="form-check-input" name="TermsAndConditions" value="true">
                 <label style="margin-left:30px;" class="form-check-label" for="TermsAndConditions">I agree to <a class="white-text" style="text-decoration:underline;">the Terms and Condition</a></label>
                 <br />
                 <span class="text-danger" asp-validation-for="TermsAndConditions"></span>
             </div>
+
             <div style="float:right;">
 
-                <button type="submit" class="btn btn-warning">Register</button>
+                <button type="submit" class="btn btn-warning">Complete</button>
             </div>
-            <br />
-            <div>
-                <br />
-                <p></p>
-            </div>
-            <br />
-            <div style="clear:both;" class="text-center">
-                <a asp-action="ExternalLogin" class="btn btn-warning" asp-route-provider="Google" title="Register with Google">Google</a>
-                <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                <a asp-action="ExternalLogin" class="btn btn-warning" asp-route-provider="Facebook" title="Register with Facebook">Facebook</a>
-            </div>
-
-            <div class="form-group" style="clear:both;">
-                <br />
-                <p>
-                    <a asp-action="Login" style="color:white;">Existing User? Login here</a>
-                </p>
-            </div>
+            @*Could do something similar to below*@
+            @*By clicking “Create my account”, you agree to our terms of service, privacy policy and cookie policy*@
         </form>
     </div>
 </div>
 
-@section Scripts{ 
-    <partial  name="_ValidationScriptsPartial"/>  
-}
+@section Scripts{
+    <partial name="_ValidationScriptsPartial" />
+    }
